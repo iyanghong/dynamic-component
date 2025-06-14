@@ -32,7 +32,7 @@ pnpm install
 
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
-| schema | `FormSchema` | - | 表单配置JSON |
+| filedSchema | `FormSchema` | - | 表单配置JSON |
 | modelValue | `Record<string, any>` | {} | 表单数据 |
 | layout | `'horizontal' | 'vertical'` | 'horizontal' | 表单布局 |
 | disabled | `boolean` | false | 是否禁用表单 |
@@ -87,7 +87,7 @@ interface FormGroup {
 <div id="form-comprehensive" class="tab-content" style="display: block;">
 ```vue
 <template>
-  <DynamicForm :schema="comprehensiveSchema" v-model="formData" />
+  <DynamicForm :filedSchema="comprehensiveSchema" v-model="formData" />
 </template>
 
 <script setup>
@@ -150,7 +150,7 @@ const comprehensiveSchema = {
 <div id="form-basic" class="tab-content">
 ```vue
 <template>
-  <DynamicForm :schema="basicSchema" v-model="formData" />
+  <DynamicForm :filedSchema="basicSchema" v-model="formData" />
 </template>
 
 <script setup>
@@ -170,7 +170,7 @@ const basicSchema = {
 <div id="form-group-collapsible" class="tab-content">
 ```vue
 <template>
-  <DynamicForm :schema="collapsibleGroupSchema" v-model="formData" />
+  <DynamicForm :filedSchema="collapsibleGroupSchema" v-model="formData" />
 </template>
 
 <script setup>
@@ -197,7 +197,7 @@ const collapsibleGroupSchema = {
 <div id="form-group-non-collapsible" class="tab-content">
 ```vue
 <template>
-  <DynamicForm :schema="nonCollapsibleGroupSchema" v-model="formData" />
+  <DynamicForm :filedSchema="nonCollapsibleGroupSchema" v-model="formData" />
 </template>
 
 <script setup>
@@ -224,7 +224,7 @@ const nonCollapsibleGroupSchema = {
 <div id="form-multi-column" class="tab-content">
 ```vue
 <template>
-  <DynamicForm :schema="multiColumnSchema" v-model="formData" />
+  <DynamicForm :filedSchema="multiColumnSchema" v-model="formData" />
 </template>
 
 <script setup>

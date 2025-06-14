@@ -1,39 +1,73 @@
-export interface FormSchema {
-  layout?: FormLayoutItem[]
-  width?: string | number // 表单宽度，可以是数字(px)或字符串(如'100%')
+import {ServiceResult} from "@/types/response.ts";
+
+
+export interface FormProps<T = Record<string, any>> {
+    // API 配置
+    getApi?: () => Promise<ServiceResult<T>>
+    createApi?: (data: T) => Promise<ServiceResult<T>>
+    updateApi?: (data: T) => Promise<ServiceResult<T>>
+    deleteApi?: (id: string | number) => Promise<ServiceResult<T>>
+    // 固定数据（当不需要调用 API 时使用）
+    fixedData?: T
+    // 表单配置
+    filedSchema: FormFieldSchema<T>
+    width?: string | number // 表单宽度，可以是数字(px)或字符串(如'100%')
+    // 验证配置
+    validateBeforeSubmit?: boolean // 是否在提交前验证
+    validateOnChange?: boolean // 是否在值变化时验证
+    // 回调钩子
+    onSuccess?: (result: ServiceResult<T>) => void // 成功回调
+    onError?: (error: any) => void // 错误回调
+    onBeforeGet?: () => Promise<boolean> // 获取数据前回调
+    onAfterGet?: (data: T) => void // 获取数据后回调
+    onBeforeCreate?: (data: T) => Promise<boolean> // 创建数据前回调
+    onAfterCreate?: (data: T) => void // 创建数据后回调
+    onBeforeUpdate?: (data: T) => Promise<boolean> // 更新数据前回调
+    onAfterUpdate?: (data: T) => void // 更新数据后回调
+    onBeforeDelete?: (id: string | number) => Promise<boolean> // 删除数据前回调
+    onAfterDelete?: () => void // 删除数据后回调
+    onFieldChange?: (field: string, value: any, formData: T) => void // 字段值变化回调
+    onValidationError?: (errors: Record<string, string[]>) => void // 验证错误回调
+    onFormReset?: () => void // 表单重置回调
+    onFormSubmit?: (data: T) => Promise<boolean> // 表单提交前回调
+    onFormSubmitSuccess?: (data: T) => void // 表单提交成功回调
+    onFormSubmitError?: (error: any) => void // 表单提交失败回调
 }
 
-export type FormLayoutItem = FormField | FormGroup;
+export type FormFieldSchema<T = Record<string, any>> = FormLayoutItem<T> [];
+export type FormLayoutItem<T = Record<string, any>> = FormField<T> | FormGroup<T>;
 
-export interface FormField {
-  type: 'input' | 'password' | 'select' | 'checkbox' | 'radio' | 'date' | 'switch' | 'number'
-  label: string
-  field: string
-  defaultValue?: any
-  rules?: Array<{
-    required?: boolean
-    message?: string
-    validator?: Function
-  }>
-  options?: Array<{
+export interface FormField<T = Record<string, any>> {
+    type: 'input' | 'password' | 'select' | 'checkbox' | 'radio' | 'date' | 'switch' | 'number'
     label: string
-    value: any
-  }>
-  span?: number
-  disabled?: boolean
-  clearable?: boolean
-  placeholder?: string
-  filterable?: boolean
-  inGroup?: boolean
-  width?: string | number // 字段宽度，可以是数字(px)或字符串(如'100%')
-  labelPosition?: 'left' | 'top' // 标签位置，默认left
-  row?: number // 所在行号，相同row的字段会在同一行显示
+    field: string
+    defaultValue?: (formData: T) => any | any
+    rules?: Array<{
+        required?: boolean
+        message?: string
+        validator?: Function
+    }>
+    options?: Array<{
+        label: string
+        value: any
+    }>
+    span?: number
+    disabled?: boolean
+    clearable?: boolean
+    placeholder?: string
+    filterable?: boolean
+    inGroup?: boolean
+    width?: string | number // 字段宽度，可以是数字(px)或字符串(如'100%')
+    labelPosition?: 'left' | 'top' // 标签位置，默认left
+    row?: number // 所在行号，相同row的字段会在同一行显示
+    setValueFormatter: (value: any, formData: T) => any
+    getValueFormatter: (value: any, formData: T) => any
 }
 
-export interface FormGroup {
-  title?: string
-  columns?: number
-  fields: FormField[]
-  defaultExpanded?: boolean
-  collapsible?: boolean // 新增：是否可收缩，默认true
+export interface FormGroup<T = Record<string, any>> {
+    title?: string
+    columns?: number
+    fields: FormField<T>[]
+    defaultExpanded?: boolean
+    collapsible?: boolean // 新增：是否可收缩，默认true
 }

@@ -1,38 +1,38 @@
 <template>
   <div class="dynamic-form">
-    <n-form 
-      ref="formRef"
-      :model="modelValue" 
-      :rules="formRules"
-      :layout="layout" 
-      :disabled="disabled"
-      :style="formStyle"
-      @validate="handleValidate"
-      :validate-on-rule-change="false"
+    <n-form
+        ref="formRef"
+        :model="modelValue"
+        :rules="formRules"
+        :layout="layout"
+        :disabled="disabled"
+        :style="formStyle"
+        @validate="handleValidate"
+        :validate-on-rule-change="false"
     >
       <template v-for="(item, index) in processedSchema.layout" :key="index">
         <!-- 如果是 FormGroup -->
         <template v-if="isFormGroup(item)">
           <!-- 有标题且可收缩的分组 -->
-          <n-collapse 
-            v-if="item.title && item.collapsible !== false"
-            :default-expanded-names="defaultExpandedNames" 
-            :key="`group-collapse-${index}`"
+          <n-collapse
+              v-if="item.title && item.collapsible !== false"
+              :default-expanded-names="defaultExpandedNames"
+              :key="`group-collapse-${index}`"
           >
             <n-collapse-item :title="item.title" :name="index">
               <template v-for="row in getGroupRows(item.fields)" :key="row">
                 <n-grid :cols="item.columns || 1" :x-gap="12">
-                  <n-gi 
-                    v-for="field in getFieldsInRow(item.fields, row)" 
-                    :key="field.field" 
-                    :span="field.span || 1"
+                  <n-gi
+                      v-for="field in getFieldsInRow(item.fields, row)"
+                      :key="field.field"
+                      :span="field.span || 1"
                   >
-                    <n-form-item 
-                      :label="field.label" 
-                      :path="field.field"
-                      :label-placement="field.labelPosition || 'left'"
+                    <n-form-item
+                        :label="field.label"
+                        :path="field.field"
+                        :label-placement="field.labelPosition || 'left'"
                     >
-                      <form-field :field="{ ...field, inGroup: true }" v-model="modelValue[field.field]" />
+                      <form-field :field="{ ...field, inGroup: true }" v-model="modelValue[field.field]"/>
                     </n-form-item>
                   </n-gi>
                 </n-grid>
@@ -40,25 +40,25 @@
             </n-collapse-item>
           </n-collapse>
           <!-- 有标题但不可收缩的分组 (例如，作为n-card) -->
-          <n-card 
-            v-else-if="item.title && item.collapsible === false"
-            :title="item.title"
-            :key="`group-card-${index}`"
-            style="margin-bottom: 16px;"
+          <n-card
+              v-else-if="item.title && item.collapsible === false"
+              :title="item.title"
+              :key="`group-card-${index}`"
+              style="margin-bottom: 16px;"
           >
             <template v-for="row in getGroupRows(item.fields)" :key="row">
               <n-grid :cols="item.columns || 1" :x-gap="12">
-                <n-gi 
-                  v-for="field in getFieldsInRow(item.fields, row)" 
-                  :key="field.field" 
-                  :span="field.span || 1"
+                <n-gi
+                    v-for="field in getFieldsInRow(item.fields, row)"
+                    :key="field.field"
+                    :span="field.span || 1"
                 >
-                  <n-form-item 
-                    :label="field.label" 
-                    :path="field.field"
-                    :label-placement="field.labelPosition || 'left'"
+                  <n-form-item
+                      :label="field.label"
+                      :path="field.field"
+                      :label-placement="field.labelPosition || 'left'"
                   >
-                    <form-field :field="{ ...field, inGroup: true }" v-model="modelValue[field.field]" />
+                    <form-field :field="{ ...field, inGroup: true }" v-model="modelValue[field.field]"/>
                   </n-form-item>
                 </n-gi>
               </n-grid>
@@ -68,17 +68,17 @@
           <template v-else>
             <template v-for="row in getGroupRows(item.fields)" :key="row">
               <n-grid :cols="item.columns || 1" :x-gap="12">
-                <n-gi 
-                  v-for="field in getFieldsInRow(item.fields, row)" 
-                  :key="field.field" 
-                  :span="field.span || 1"
+                <n-gi
+                    v-for="field in getFieldsInRow(item.fields, row)"
+                    :key="field.field"
+                    :span="field.span || 1"
                 >
-                  <n-form-item 
-                    :label="field.label" 
-                    :path="field.field"
-                    :label-placement="field.labelPosition || 'left'"
+                  <n-form-item
+                      :label="field.label"
+                      :path="field.field"
+                      :label-placement="field.labelPosition || 'left'"
                   >
-                    <form-field :field="{ ...field, inGroup: true }" v-model="modelValue[field.field]" />
+                    <form-field :field="{ ...field, inGroup: true }" v-model="modelValue[field.field]"/>
                   </n-form-item>
                 </n-gi>
               </n-grid>
@@ -91,10 +91,10 @@
     <!-- 表单操作按钮 -->
     <div class="form-actions" v-if="isShowActions">
       <n-space>
-        <n-button 
-          type="primary" 
-          @click="handleSave"
-          :loading="loading"
+        <n-button
+            type="primary"
+            @click="handleSave"
+            :loading="loading"
         >
           {{ isEdit ? '保存' : '新增' }}
         </n-button>
@@ -105,19 +105,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, computed, onMounted } from 'vue'
-import { NForm, NFormItem, NGrid, NGi, NCollapse, NCollapseItem, NCard, NSpace, NButton, useMessage } from 'naive-ui'
+import {ref, watch, computed, onMounted, type PropType} from 'vue'
+import {NForm, NFormItem, NGrid, NGi, NCollapse, NCollapseItem, NCard, NSpace, NButton, useMessage} from 'naive-ui'
 import FormField from './FormField.vue'
-import type { FormSchema, FormField as FormFieldType, FormGroup, FormLayoutItem } from './types'
-import { ServiceResult } from '@/types/response'
+import type {FormSchema, FormField as FormFieldType, FormGroup, FormLayoutItem} from './types'
+import {ServiceResult} from '@/types/response'
 
 const props = defineProps({
-  schema: {
+  filedSchema: {
     type: Object as () => FormSchema,
-    required: true,
-    validator: (value: FormSchema) => {
-      return !!value?.layout;
-    }
+    required: true
+  },
+  width: {
+    type: [String, Number],
+    default: () => '100%'
   },
   modelValue: {
     type: Object,
@@ -133,20 +134,20 @@ const props = defineProps({
   },
   // API 配置
   getApi: {
-    type: Function as () => Promise<ServiceResult<any>>,
+    type: Function as PropType<(id: string) => Promise<ServiceResult<Record<string, any>>>>,
     default: undefined
   },
   createApi: {
-    type: Function as () => Promise<ServiceResult<any>>,
+    type: Function as PropType<(data: Record<string, any>) => Promise<ServiceResult<Record<string, any>>>>,
     default: undefined
   },
   updateApi: {
-    type: Function as () => Promise<ServiceResult<any>>,
+    type: Function as PropType<(data: Record<string, any>) => Promise<ServiceResult<Record<string, any>>>>,
     default: undefined
   },
   // 是否显示操作按钮
   showActions: {
-    type: [Boolean , null],
+    type: [Boolean, null],
     default: null
   },
   // 自定义按钮文字
@@ -163,19 +164,16 @@ const props = defineProps({
 const emit = defineEmits(['update:modelValue', 'validate', 'success', 'error'])
 
 const formRef = ref<InstanceType<typeof NForm> | null>(null)
-const modelValue = ref({ ...props.modelValue })
+const modelValue = ref({...props.modelValue})
 const loading = ref(false)
 const message = useMessage()
-const globalError = ref('')
+
 const isShowActions = computed(() => {
-  if (props.showActions !== null){
+  if (props.showActions !== null) {
     return props.showActions
   }
   return props.createApi || props.updateApi
 })
-
-
-
 
 
 // 判断是否为编辑模式
@@ -184,9 +182,9 @@ const isEdit = computed(() => {
 })
 
 const formStyle = computed(() => {
-  const width = props.schema.width
+  const width = props.width
   if (!width) return {}
-  
+
   return {
     width: typeof width === 'number' ? `${width}px` : width
   }
@@ -196,8 +194,8 @@ const defaultExpandedNames = computed(() => {
   if (!processedSchema.value.layout) return []
   // defaultExpandedNames 应该只应用于真正的可收缩分组
   return processedSchema.value.layout
-    .filter(item => isFormGroup(item) && item.title && item.collapsible !== false && item.defaultExpanded)
-    .map((item, index) => index) as number[]
+      .filter(item => isFormGroup(item) && item.title && item.collapsible !== false && item.defaultExpanded)
+      .map((item, index) => index) as number[]
 })
 
 // 类型守卫函数，判断是否为 FormGroup
@@ -224,9 +222,9 @@ function getGroupRows(fields: FormFieldType[]): number[] {
 // 统一处理schema，确保始终有layout属性，并且layout中的每个项都是 FormGroup
 const formRules = computed(() => {
   const rules: Record<string, any> = {};
-  if (!props.schema.layout) return rules;
+  if (!props.filedSchema) return rules;
 
-  props.schema.layout.forEach(group => {
+  props.filedSchema.forEach(group => {
     if (isFormGroup(group)) {
       group.fields?.forEach(field => {
         if (field.field && field.rules) {
@@ -239,8 +237,8 @@ const formRules = computed(() => {
 });
 
 const processedSchema = computed(() => {
-  if (props.schema.layout) {
-    const processedLayout: FormGroup[] = props.schema.layout.map(item => {
+  if (props.filedSchema) {
+    const processedLayout: FormGroup[] = props.filedSchema.map(item => {
       if (isFormGroup(item)) {
         return item;
       } else { // 如果是 FormField，则包装成一个无标题、不可收缩的 FormGroup
@@ -254,16 +252,16 @@ const processedSchema = computed(() => {
       }
     });
     return {
-      ...props.schema,
+      ...props.filedSchema,
       layout: processedLayout
     };
   }
-  return { layout: [] }; // 默认返回空布局
+  return {layout: []}; // 默认返回空布局
 });
 
 watch(modelValue, (newVal) => {
   emit('update:modelValue', newVal)
-}, { deep: true })
+}, {deep: true})
 
 // 表单验证
 const handleValidate = (errors: { [key: string]: string[] }) => {
@@ -276,7 +274,7 @@ const handleSave = async () => {
 
   try {
     loading.value = true
-    
+
     // 表单验证
     const valid = await formRef.value.validate()
     if (!valid) {
@@ -320,20 +318,20 @@ const handleReset = () => {
     // 编辑模式下，重新获取数据
     loading.value = true
     props.getApi()
-      .then(result => {
-        if (result.success) {
-          modelValue.value = result.data
-          message.success('重置成功')
-        } else {
-          message.error(result.message)
-        }
-      })
-      .catch(error => {
-        message.error(error instanceof Error ? error.message : '重置失败')
-      })
-      .finally(() => {
-        loading.value = false
-      })
+        .then(result => {
+          if (result.success) {
+            modelValue.value = result.data
+            message.success('重置成功')
+          } else {
+            message.error(result.message)
+          }
+        })
+        .catch(error => {
+          message.error(error instanceof Error ? error.message : '重置失败')
+        })
+        .finally(() => {
+          loading.value = false
+        })
   } else {
     // 创建模式下，清空表单
     modelValue.value = {}
