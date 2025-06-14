@@ -60,14 +60,14 @@ export interface FormField<T = Record<string, any>> {
     width?: string | number // 字段宽度，可以是数字(px)或字符串(如'100%')
     labelPosition?: 'left' | 'top' // 标签位置，默认left
     row?: number // 所在行号，相同row的字段会在同一行显示
-    setValueFormatter: (value: any, formData: T) => any
-    getValueFormatter: (value: any, formData: T) => any
+    setValueFormatter?: (value: any, formData: T) => any
+    getValueFormatter?: (value: any, formData: T) => any
 }
 
 export interface FormGroup<T = Record<string, any>> {
     title?: string
     columns?: number
-    fields: FormField<T>[]
+    fields: FormLayoutItem<T>[]
     defaultExpanded?: boolean
     collapsible?: boolean // 新增：是否可收缩，默认true
 }
