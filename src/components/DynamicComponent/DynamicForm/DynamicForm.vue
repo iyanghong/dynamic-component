@@ -2,7 +2,7 @@
   <div class="dynamic-form">
     <n-form
         ref="formRef"
-        :model="modelValue"
+        :model="internalFormData"
         :rules="formRules"
         :layout="layout"
         :disabled="disabled"
@@ -32,7 +32,10 @@
                         :path="field.field"
                         :label-placement="field.labelPosition || 'left'"
                     >
-                      <form-field :field="{ ...field, inGroup: true }" v-model="modelValue[field.field]"/>
+                      <form-field
+                        :field="{ ...field, inGroup: true }"
+                        v-model="internalFormData[field.field]"
+                      />
                     </n-form-item>
                   </n-gi>
                 </n-grid>
@@ -58,7 +61,10 @@
                       :path="field.field"
                       :label-placement="field.labelPosition || 'left'"
                   >
-                    <form-field :field="{ ...field, inGroup: true }" v-model="modelValue[field.field]"/>
+                    <form-field
+                      :field="{ ...field, inGroup: true }"
+                      v-model="internalFormData[field.field]"
+                    />
                   </n-form-item>
                 </n-gi>
               </n-grid>
@@ -78,7 +84,10 @@
                       :path="field.field"
                       :label-placement="field.labelPosition || 'left'"
                   >
-                    <form-field :field="{ ...field, inGroup: true }" v-model="modelValue[field.field]"/>
+                    <form-field
+                      :field="{ ...field, inGroup: true }"
+                      v-model="internalFormData[field.field]"
+                    />
                   </n-form-item>
                 </n-gi>
               </n-grid>
@@ -108,12 +117,13 @@
 import {ref, watch, computed, onMounted, type PropType} from 'vue'
 import {NForm, NFormItem, NGrid, NGi, NCollapse, NCollapseItem, NCard, NSpace, NButton, useMessage} from 'naive-ui'
 import FormField from './FormField.vue'
-import type {FormSchema, FormField as FormFieldType, FormGroup, FormLayoutItem} from './types'
+import type {FormField as FormFieldType, FormGroup, FormLayoutItem} from './types'
 import {ServiceResult} from '@/types/response'
+import {getDefaultValues} from './utils'
 
 const props = defineProps({
   filedSchema: {
-    type: Object as () => FormSchema,
+    type: Object as () => FormLayoutItem[],
     required: true
   },
   width: {
@@ -161,10 +171,46 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:modelValue', 'validate', 'success', 'error'])
+const emit = defineEmits([
+  'update:modelValue',
+  'validate', 
+  'success',
+  'error',
+  'init',
+  'field-change',
+  'before-submit',
+  'after-submit', 
+  'before-reset',
+  'after-reset'
+])
 
 const formRef = ref<InstanceType<typeof NForm> | null>(null)
-const modelValue = ref({...props.modelValue})
+// 使用一个内部的 ref 来管理表单数据
+const internalFormData = ref<Record<string, any>>({})
+
+// 监听 props.modelValue 的变化，同步到内部状态
+watch(() => props.modelValue, (newVal) => {
+  // 仅当 newVal 发生实际变化时才更新 internalFormData，避免不必要的触发和潜在的循环
+  // 使用 JSON.stringify 进行简单深比较，对于复杂对象可能需要更健壮的比较方式
+  if (JSON.stringify(internalFormData.value) !== JSON.stringify(newVal)) {
+    internalFormData.value = { ...newVal }
+  }
+}, { deep: true, immediate: true }) // immediate: true 确保在组件初始化时同步一次
+
+// 监听内部状态的变化，并向父组件发出更新事件
+watch(internalFormData, (newVal, oldVal) => {
+  emit('update:modelValue', newVal)
+  
+  // 找出变化的字段
+  const changedFields = Object.keys(newVal).filter(key => 
+    JSON.stringify(newVal[key]) !== JSON.stringify(oldVal?.[key])
+  )
+  
+  changedFields.forEach(field => {
+    emit('field-change', field, newVal[field], newVal)
+  })
+}, { deep: true })
+
 const loading = ref(false)
 const message = useMessage()
 
@@ -178,7 +224,7 @@ const isShowActions = computed(() => {
 
 // 判断是否为编辑模式
 const isEdit = computed(() => {
-  return !!modelValue.value.id
+  return !!internalFormData.value.id
 })
 
 const formStyle = computed(() => {
@@ -210,13 +256,15 @@ function getRows(fields: FormFieldType[]): number[] {
 }
 
 // 获取指定行的字段
-function getFieldsInRow(fields: FormFieldType[], row: number): FormFieldType[] {
-  return fields.filter(f => (f.row || 0) === row)
+function getFieldsInRow(fields: FormLayoutItem[], row: number): FormFieldType[] {
+  const formFields = fields.filter(f => 'field' in f) as FormFieldType[]
+  return formFields.filter(f => (f.row || 0) === row)
 }
 
 // 获取分组中的所有行号
-function getGroupRows(fields: FormFieldType[]): number[] {
-  return getRows(fields)
+function getGroupRows(fields: FormLayoutItem[]): number[] {
+  const formFields = fields.filter(f => 'field' in f) as FormFieldType[]
+  return getRows(formFields)
 }
 
 // 统一处理schema，确保始终有layout属性，并且layout中的每个项都是 FormGroup
@@ -224,13 +272,15 @@ const formRules = computed(() => {
   const rules: Record<string, any> = {};
   if (!props.filedSchema) return rules;
 
-  props.filedSchema.forEach(group => {
-    if (isFormGroup(group)) {
-      group.fields?.forEach(field => {
-        if (field.field && field.rules) {
+  props.filedSchema.forEach(item => {
+    if (isFormGroup(item)) {
+      item.fields?.forEach(field => {
+        if ('field' in field && 'rules' in field && field.rules) {
           rules[field.field] = field.rules;
         }
       });
+    } else if ('field' in item && 'rules' in item && item.rules) {
+      rules[item.field] = item.rules;
     }
   });
   return rules;
@@ -259,10 +309,6 @@ const processedSchema = computed(() => {
   return {layout: []}; // 默认返回空布局
 });
 
-watch(modelValue, (newVal) => {
-  emit('update:modelValue', newVal)
-}, {deep: true})
-
 // 表单验证
 const handleValidate = (errors: { [key: string]: string[] }) => {
   emit('validate', errors)
@@ -274,6 +320,7 @@ const handleSave = async () => {
 
   try {
     loading.value = true
+    emit('before-submit', internalFormData.value)
 
     // 表单验证
     const valid = await formRef.value.validate()
@@ -287,19 +334,20 @@ const handleSave = async () => {
       if (!props.updateApi) {
         throw new Error('未配置更新接口')
       }
-      result = await props.updateApi(modelValue.value)
+      result = await props.updateApi(internalFormData.value)
     } else {
       if (!props.createApi) {
         throw new Error('未配置创建接口')
       }
-      result = await props.createApi(modelValue.value)
+      result = await props.createApi(internalFormData.value)
     }
 
     if (result.success) {
       message.success(result.message)
       emit('success', result.data)
+      emit('after-submit', { isEdit: isEdit.value, formData: internalFormData.value })
       if (!isEdit.value) {
-        modelValue.value = result.data
+        internalFormData.value = result.data // 创建成功后更新内部数据
       }
     } else {
       message.error(result.message)
@@ -314,14 +362,17 @@ const handleSave = async () => {
 
 // 重置表单
 const handleReset = () => {
-  if (isEdit.value && props.getApi) {
+  emit('before-reset', internalFormData.value)
+  
+  if (isEdit.value && props.getApi && internalFormData.value?.id) {
     // 编辑模式下，重新获取数据
     loading.value = true
-    props.getApi()
+    props.getApi(internalFormData.value.id)
         .then(result => {
           if (result.success) {
-            modelValue.value = result.data
+            internalFormData.value = result.data || {} // 重置为获取到的数据
             message.success('重置成功')
+            emit('after-reset', { isEdit: true, formData: internalFormData.value })
           } else {
             message.error(result.message)
           }
@@ -333,21 +384,26 @@ const handleReset = () => {
           loading.value = false
         })
   } else {
-    // 创建模式下，清空表单
-    modelValue.value = {}
+    // 创建模式下，清空表单并应用默认值
+    internalFormData.value = {
+      ...getDefaultValues(props.filedSchema),
+      ...props.modelValue // 确保初始的 prop.modelValue 也能被合并
+    }
     formRef.value?.restoreValidation()
     message.success('重置成功')
+    emit('after-reset', { isEdit: false, formData: internalFormData.value })
   }
 }
 
 // 初始化数据
 onMounted(async () => {
-  if (isEdit.value && props.getApi) {
+  if (isEdit.value && props.getApi && props.modelValue?.id) {
     try {
       loading.value = true
-      const result = await props.getApi()
+      const result = await props.getApi(props.modelValue.id)
       if (result.success) {
-        modelValue.value = result.data
+        internalFormData.value = result.data || {}
+        emit('init', { isEdit: true, formData: internalFormData.value })
       } else {
         message.error(result.message)
       }
@@ -356,6 +412,14 @@ onMounted(async () => {
     } finally {
       loading.value = false
     }
+  } else {
+    // 非编辑模式也初始化默认值
+    const defaultValues = getDefaultValues(props.filedSchema)
+    internalFormData.value = {
+      ...defaultValues,
+      ...props.modelValue // 确保初始的 prop.modelValue 也能被合并
+    }
+    emit('init', { isEdit: false, formData: internalFormData.value })
   }
 })
 

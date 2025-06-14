@@ -45,7 +45,7 @@ const groupSchema: FormFieldSchema = [
     defaultExpanded: true,
     columns: 2,
     fields: [
-      {type: 'input', label: '姓名', field: 'name', width: '80%', row: 0},
+      {type: 'input', label: '姓名', field: 'name', width: '80%', row: 0, defaultValue: '张三'},
       {
         type: 'select', label: '性别', field: 'gender',
         options: [
@@ -55,7 +55,11 @@ const groupSchema: FormFieldSchema = [
         width: '150px',
         row: 0
       },
-      {type: 'input', label: '手机', field: 'phone', row: 1},
+      {
+        type: 'input', label: '手机', field: 'phone', row: 1, defaultValue: () => {
+          return '18866666666'
+        }
+      },
       {type: 'input', label: '邮箱', field: 'email', row: 1}
     ]
   },

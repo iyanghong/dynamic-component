@@ -5,20 +5,28 @@ function isFormGroup(item: FormLayoutItem): item is FormGroup {
     return (item as FormGroup).fields !== undefined;
 }
 
-export function getDefaultValues(schema: FormFieldSchema) {
+export function getDefaultValues(schema: FormLayoutItem[]) {
     const allFields: FormField[] = [];
     if (schema) {
         schema.forEach(item => {
             if (isFormGroup(item)) {
-                allFields.push(...item.fields);
-            } else { // FormField
+                allFields.push(...item.fields.filter(f => 'field' in f));
+            } else if ('field' in item) { // FormField
                 allFields.push(item);
             }
         });
     }
 
     return allFields.reduce((model: Record<string, any>, field: FormField) => {
-        model[field.field] = field.defaultValue ?? '';
+        if (field.defaultValue !== undefined) {
+            if (typeof field.defaultValue === 'function') {
+                model[field.field] = field.defaultValue({});
+            } else {
+                model[field.field] = field.defaultValue;
+            }
+        } else {
+            model[field.field] = null;
+        }
         return model;
     }, {} as Record<string, any>);
 }

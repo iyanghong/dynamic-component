@@ -34,7 +34,8 @@ export interface FormProps<T = Record<string, any>> {
     onFormSubmitError?: (error: any) => void // 表单提交失败回调
 }
 
-export type FormFieldSchema<T = Record<string, any>> = FormLayoutItem<T> [];
+export type FormSchema<T = Record<string, any>> = FormLayoutItem<T> [];
+export type FormFieldSchema<T = Record<string, any>> = FormSchema<T>;
 export type FormLayoutItem<T = Record<string, any>> = FormField<T> | FormGroup<T>;
 
 export interface FormField<T = Record<string, any>> {
@@ -59,7 +60,7 @@ export interface FormField<T = Record<string, any>> {
     inGroup?: boolean
     width?: string | number // 字段宽度，可以是数字(px)或字符串(如'100%')
     labelPosition?: 'left' | 'top' // 标签位置，默认left
-    row?: number // 所在行号，相同row的字段会在同一行显示
+    row?: number // 所在行号，相同row的字段会在同一行显示，默认0
     setValueFormatter?: (value: any, formData: T) => any
     getValueFormatter?: (value: any, formData: T) => any
 }

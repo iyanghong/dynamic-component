@@ -8,7 +8,7 @@
         'feedback-text': feedback,
         'validation-status': status
       }"
-      v-model="modelValue"
+      v-model:value="modelValue"
       :style="fieldStyle"
     />
   </div>
@@ -38,14 +38,22 @@ const props = defineProps<{
 const emit = defineEmits(['update:modelValue'])
 
 const modelValue = computed({
-  get: () => props.modelValue,
-  set: (value) => emit('update:modelValue', value)
+  get: () => {
+    const rawValue = props.modelValue
+    if (props.field.getValueFormatter) {
+      return props.field.getValueFormatter(rawValue, {})
+    }
+    return rawValue
+  },
+  set: (value) => {
+    let formattedValue = value
+    if (props.field.setValueFormatter) {
+      formattedValue = props.field.setValueFormatter(value, {})
+    }
+    emit('update:modelValue', formattedValue)
+  }
 })
 
-const showLabel = computed(() => {
-  // 非分组模式下显示label
-  return !props.field.inGroup && props.field.label
-})
 
 const fieldStyle = computed(() => {
   const width = props.field.width

@@ -28,309 +28,171 @@ pnpm install
 
 ### 动态表单组件 (DynamicForm)
 
-#### Props
+#### 基本用法
 
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| filedSchema | `FormSchema` | - | 表单配置JSON |
-| modelValue | `Record<string, any>` | {} | 表单数据 |
-| layout | `'horizontal' | 'vertical'` | 'horizontal' | 表单布局 |
-| disabled | `boolean` | false | 是否禁用表单 |
+```vue
+<template>
+  <DynamicForm :filedSchema="schema" v-model="formData" />
+</template>
 
-#### FormSchema 类型
+<script setup>
+import DynamicForm from '@/components/DynamicComponent/DynamicForm/DynamicForm.vue'
+import { ref } from 'vue'
+
+const formData = ref({})
+const schema = [
+  {
+    title: '基本信息',
+    columns: 2,
+    fields: [
+      { type: 'input', label: '姓名', field: 'name' },
+      { type: 'select', label: '性别', field: 'gender', 
+        options: [
+          { label: '男', value: 'male' },
+          { label: '女', value: 'female' }
+        ]
+      }
+    ]
+  }
+]
+</script>
+```
+
+#### Schema 配置
+
+表单通过 `filedSchema` 属性配置，支持分组和多种字段类型：
 
 ```typescript
-interface FormSchema {
-  width?: string | number; // 表单宽度，例如 '100%' 或 800
-  layout: FormLayoutItem[]; // 表单布局项数组
+interface FormLayoutItem {
+  title?: string // 分组标题
+  columns?: number // 分组列数 (默认1)
+  fields: FormField[] // 字段数组
+  collapsible?: boolean // 是否可收缩 (默认true)
+  defaultExpanded?: boolean // 默认是否展开 (默认false)
 }
-
-// 表单布局项可以是单个字段或一个字段组
-type FormLayoutItem = FormField | FormGroup;
 
 interface FormField {
-  type: 'input' | 'password' | 'select' | 'checkbox' | 'radio' | 'date' | 'switch' | 'number';
-  label: string; // 字段标签
-  field: string; // 字段对应的 modelValue 键
-  defaultValue?: any; // 默认值
-  rules?: Array<{ required?: boolean; message?: string; validator?: Function }>; // 验证规则
-  options?: Array<{ label: string; value: any }>; // select 和 radio 类型的选项
-  span?: number; // 占用列数 (在 n-grid 中使用)
-  width?: string | number; // 字段宽度，例如 '100%' 或 200
-  row?: number; // 字段所在的行 (用于多行布局)
-  labelPosition?: 'left' | 'top'; // 标签位置 (覆盖全局设置)
-  disabled?: boolean; // 是否禁用
-  clearable?: boolean; // 是否可清空
-  placeholder?: string; // 占位符
-  filterable?: boolean; // select 是否可过滤
-}
-
-interface FormGroup {
-  title?: string; // 分组标题，如果存在则显示标题
-  columns?: number; // 每行列数 (1-4)，默认为 1
-  fields: FormField[]; // 组内的字段数组
-  collapsible?: boolean; // 是否可收缩，默认为 true。如果为 false 且有 title，则显示为 n-card
-  defaultExpanded?: boolean; // 默认是否展开，默认为 false (仅对可收缩分组有效)
+  type: 'input' | 'password' | 'select' | 'checkbox' | 'radio' | 'date' | 'switch' | 'number'
+  label: string // 字段标签
+  field: string // 字段名 (对应v-model中的key)
+  defaultValue?: any // 默认值
+  rules?: Array<{ // 验证规则
+    required?: boolean
+    message?: string
+    validator?: Function
+  }>
+  options?: Array<{ // select/radio选项
+    label: string
+    value: any
+  }>
+  span?: number // 跨列数 (默认1)
+  row?: number // 所在行号
+  width?: string | number // 字段宽度
+  labelPosition?: 'left' | 'top' // 标签位置
+  disabled?: boolean // 是否禁用
+  placeholder?: string // 占位文本
 }
 ```
 
-#### 示例
+#### API 配置
 
-<div class="tabs">
-  <button class="tab-button active" onclick="openTab(event, 'form-comprehensive')">全面布局示例</button>
-  <button class="tab-button" onclick="openTab(event, 'form-basic')">基础字段</button>
-  <button class="tab-button" onclick="openTab(event, 'form-group-collapsible')">可收缩分组</button>
-  <button class="tab-button" onclick="openTab(event, 'form-group-non-collapsible')">不可收缩分组</button>
-  <button class="tab-button" onclick="openTab(event, 'form-multi-column')">无标题多列</button>
-</div>
+支持配置CRUD接口自动处理表单提交：
 
-<div id="form-comprehensive" class="tab-content" style="display: block;">
 ```vue
-<template>
-  <DynamicForm :filedSchema="comprehensiveSchema" v-model="formData" />
-</template>
-
-<script setup>
-import { ref } from 'vue';
-
-const formData = ref({});
-const comprehensiveSchema = {
-  width: '900px',
-  layout: [
-    // 顶部直接显示的单个字段，无分组
-    { type: 'input', label: '个人简介', field: 'profile', span: 3, row: 0, labelPosition: 'top' },
-    {
-      // 一个普通的、默认展开的两列分组
-      title: '账户信息',
-      columns: 2,
-      defaultExpanded: true,
-      fields: [
-        { type: 'input', label: '用户名', field: 'username', row: 0, width: '200px' },
-        { type: 'password', label: '密码', field: 'password', row: 0, width: '200px' },
-        { type: 'input', label: '邮箱', field: 'email', row: 1, span: 2, labelPosition: 'left' },
-      ]
-    },
-    // 带有标题但不可收缩的分组（显示为卡片）
-    {
-      title: '个人偏好',
-      collapsible: false,
-      columns: 3,
-      fields: [
-        { type: 'checkbox', label: '接收邮件通知', field: 'emailNotify', row: 0 },
-        { type: 'switch', label: '启用深色模式', field: 'darkMode', row: 0 },
-        { type: 'number', label: '每页显示', field: 'itemsPerPage', row: 0, defaultValue: 10, width: '120px' },
-      ]
-    },
-    // 无标题、不可收缩的多列字段块
-    {
-      collapsible: false, // 明确指出不可收缩
-      columns: 2,
-      fields: [
-        { type: 'date', label: '注册日期', field: 'registerDate', row: 0, width: '180px' },
-        {
-          type: 'select', label: '所在地区', field: 'region',
-          options: [
-            { label: '北京', value: 'beijing' },
-            { label: '上海', value: 'shanghai' },
-            { label: '广州', value: 'guangzhou' }
-          ],
-          row: 0,
-          width: '180px'
-        },
-      ]
-    },
-    // 另一个直接显示的单个字段
-    { type: 'input', label: '备注', field: 'notes', span: 3, row: 0, labelPosition: 'top' },
-  ]
-};
-</script>
+<DynamicForm
+  :filedSchema="schema"
+  v-model="formData"
+  :get-api="getUser"
+  :create-api="createUser"
+  :update-api="updateUser"
+  @success="handleSuccess"
+  @error="handleError"
+/>
 ```
-</div>
 
-<div id="form-basic" class="tab-content">
-```vue
-<template>
-  <DynamicForm :filedSchema="basicSchema" v-model="formData" />
-</template>
-
-<script setup>
-import { ref } from 'vue';
-
-const formData = ref({});
-const basicSchema = {
-  layout: [
-    { type: 'input', label: '用户名', field: 'username' },
-    { type: 'password', label: '密码', field: 'password' }
-  ]
-};
-</script>
-```
-</div>
-
-<div id="form-group-collapsible" class="tab-content">
-```vue
-<template>
-  <DynamicForm :filedSchema="collapsibleGroupSchema" v-model="formData" />
-</template>
-
-<script setup>
-import { ref } from 'vue';
-
-const formData = ref({});
-const collapsibleGroupSchema = {
-  layout: [
-    {
-      title: '基本信息',
-      defaultExpanded: true,
-      columns: 2,
-      fields: [
-        { type: 'input', label: '姓名', field: 'name' },
-        { type: 'select', label: '性别', field: 'gender', options: [{ label: '男', value: 'male' }, { label: '女', value: 'female' }] }
-      ]
-    }
-  ]
-};
-</script>
-```
-</div>
-
-<div id="form-group-non-collapsible" class="tab-content">
-```vue
-<template>
-  <DynamicForm :filedSchema="nonCollapsibleGroupSchema" v-model="formData" />
-</template>
-
-<script setup>
-import { ref } from 'vue';
-
-const formData = ref({});
-const nonCollapsibleGroupSchema = {
-  width: '500px',
-  layout: [
-    {
-      title: '不可收缩分组',
-      collapsible: false,
-      fields: [
-        { type: 'input', label: '字段A', field: 'fieldA' },
-        { type: 'input', label: '字段B', field: 'fieldB' }
-      ]
-    }
-  ]
-};
-</script>
-```
-</div>
-
-<div id="form-multi-column" class="tab-content">
-```vue
-<template>
-  <DynamicForm :filedSchema="multiColumnSchema" v-model="formData" />
-</template>
-
-<script setup>
-import { ref } from 'vue';
-
-const formData = ref({});
-const multiColumnSchema = {
-  width: 800,
-  layout: [
-    {
-      collapsible: false, // 无标题的字段块应明确设置为不可收缩
-      columns: 3,
-      fields: [
-        { type: 'input', label: '字段1', field: 'field1', span: 1 },
-        { type: 'input', label: '字段2', field: 'field2', span: 2 },
-        { type: 'input', label: '字段3', field: 'field3', span: 3, labelPosition: 'top' }
-      ]
-    }
-  ]
-};
-</script>
-```
-</div>
-
-### 动态表格组件 (DynamicTable)
-
-#### Props
-
-| 参数 | 类型 | 默认值 | 说明 |
-|------|------|--------|------|
-| columns | `TableColumn[]` | [] | 表格列配置 |
-| data | `any[]` | [] | 表格数据 |
-| pagination | `boolean | PaginationProps` | true | 分页配置 |
-| loading | `boolean` | false | 加载状态 |
-| rowKey | `string` | 'id' | 行数据key |
-
-#### TableColumn 类型
+##### API 类型定义
 
 ```typescript
-interface TableColumn {
-  title: string;
-  key: string;
-  width?: number;
-  render?: (rowData: any, rowIndex: number) => VNode;
-  // 其他NaiveUI表格列props
+// 获取数据接口
+type GetApi = (id: string) => Promise<ServiceResult<Record<string, any>>>
+
+// 创建数据接口 
+type CreateApi = (data: Record<string, any>) => Promise<ServiceResult<Record<string, any>>>
+
+// 更新数据接口
+type UpdateApi = (data: Record<string, any>) => Promise<ServiceResult<Record<string, any>>>
+
+// 使用示例
+async function getUser(id: string) {
+  return {
+    code: 200,
+    success: true,
+    message: '获取成功',
+    data: { id, name: '张三' }
+  }
+}
+
+async function createUser(data: any) {
+  return {
+    code: 200,
+    success: true,
+    message: '创建成功',
+    data: { ...data, id: Date.now() }
+  }
+}
+
+async function updateUser(data: any) {
+  return {
+    code: 200, 
+    success: true,
+    message: '更新成功',
+    data
+  }
 }
 ```
 
-#### 示例
+#### 事件
 
-<div class="tabs">
-  <button class="tab-button active" onclick="openTab(event, 'table-basic')">基础表格</button>
-  <button class="tab-button" onclick="openTab(event, 'table-page')">分页表格</button>
-  <button class="tab-button" onclick="openTab(event, 'table-custom')">自定义渲染</button>
-</div>
+| 事件名 | 说明 | 回调参数 |
+|--------|------|---------|
+| validate | 字段验证 | `(errors: Record<string, string[]>)` |
+| success | 提交成功 | `(data: any)` |
+| error | 提交失败 | `(error: Error)` |
+| init | 初始化完成 | `({ isEdit: boolean, formData: any })` |
+| field-change | 字段值变化 | `(field: string, value: any, formData: any)` |
+| before-submit | 提交前 | `(formData: any)` |
+| after-submit | 提交后 | `({ isEdit: boolean, formData: any })` |
+| before-reset | 重置前 | `(formData: any)` |
+| after-reset | 重置后 | `({ isEdit: boolean, formData: any })` |
 
-<div id="table-basic" class="tab-content" style="display: block;">
-```vue
-<template>
-  <DynamicTable :columns="columns" :data="data"/>
-</template>
+#### 方法
 
-<script setup>
-const columns = [
-  { title: 'ID', key: 'id' },
-  { title: '名称', key: 'name' }
-];
-const data = ref([...]);
-</script>
-```
-
+通过ref调用组件方法：
 
 ```vue
 <template>
-  <DynamicTable 
-    :columns="columns"
-    :data="data"
-    :pagination="{ pageSize: 10 }"
-    @change="handlePageChange"
-  />
+  <DynamicForm ref="formRef" ... />
 </template>
 
 <script setup>
-const handlePageChange = (page) => {
-  // 获取分页数据
-};
+const formRef = ref()
+
+// 手动验证表单
+formRef.value.validate()
+
+// 重置验证状态
+formRef.value.restoreValidation()
 </script>
 ```
 
-```vue
-<template>
-  <DynamicTable :columns="columns" :data="data"/>
-</template>
+#### 完整示例
 
-<script setup>
-const columns = [
-  { 
-    title: '状态',
-    key: 'status',
-    render: (row) => h('Tag', { type: row.status ? 'success' : 'error' }, 
-      row.status ? '启用' : '禁用')
-  }
-];
-</script>
-```
-
+参考 `src/views/DemoForm.vue` 中的实现，包含：
+- 分组表单
+- 多列布局
+- 不可收缩分组
+- 混合分组与非分组
+- API表单示例
 
 ## 接口规范
 
