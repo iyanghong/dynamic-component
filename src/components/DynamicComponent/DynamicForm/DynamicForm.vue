@@ -33,8 +33,8 @@
                         :label-placement="field.labelPosition || 'left'"
                     >
                       <form-field
-                        :field="{ ...field, inGroup: true }"
-                        v-model="internalFormData[field.field]"
+                          :field="{ ...field, inGroup: true }"
+                          v-model="internalFormData[field.field]"
                       />
                     </n-form-item>
                   </n-gi>
@@ -62,8 +62,8 @@
                       :label-placement="field.labelPosition || 'left'"
                   >
                     <form-field
-                      :field="{ ...field, inGroup: true }"
-                      v-model="internalFormData[field.field]"
+                        :field="{ ...field, inGroup: true }"
+                        v-model="internalFormData[field.field]"
                     />
                   </n-form-item>
                 </n-gi>
@@ -85,8 +85,8 @@
                       :label-placement="field.labelPosition || 'left'"
                   >
                     <form-field
-                      :field="{ ...field, inGroup: true }"
-                      v-model="internalFormData[field.field]"
+                        :field="{ ...field, inGroup: true }"
+                        v-model="internalFormData[field.field]"
                     />
                   </n-form-item>
                 </n-gi>
@@ -99,7 +99,7 @@
 
     <!-- 表单操作按钮 -->
     <div class="form-actions" v-if="isShowActions">
-      <n-space>
+      <n-space :justify="actionAlign" align="center">
         <n-button
             type="primary"
             @click="handleSave"
@@ -108,6 +108,7 @@
           {{ isEdit ? '保存' : '新增' }}
         </n-button>
         <n-button @click="handleReset">重置</n-button>
+        <n-button @click="handleCancel">关闭</n-button>
       </n-space>
     </div>
   </div>
@@ -118,7 +119,7 @@ import {ref, watch, computed, onMounted, type PropType} from 'vue'
 import {NForm, NFormItem, NGrid, NGi, NCollapse, NCollapseItem, NCard, NSpace, NButton, useMessage} from 'naive-ui'
 import FormField from './FormField.vue'
 import type {FormField as FormFieldType, FormGroup, FormLayoutItem} from './types'
-import {ServiceResult} from '@/types/response'
+import {ServiceResult} from '@/types/response-utils.ts'
 import {getDefaultValues} from './utils'
 
 const props = defineProps({
@@ -160,6 +161,10 @@ const props = defineProps({
     type: [Boolean, null],
     default: null
   },
+  actionAlign: {
+    type: String as PropType< "start" | "end" | "center" | "space-around" | "space-between" | "space-evenly">,
+    default: () => 'start'
+  },
   // 自定义按钮文字
   createText: {
     type: String,
@@ -173,15 +178,16 @@ const props = defineProps({
 
 const emit = defineEmits([
   'update:modelValue',
-  'validate', 
+  'validate',
   'success',
   'error',
   'init',
   'field-change',
   'before-submit',
-  'after-submit', 
+  'after-submit',
   'before-reset',
-  'after-reset'
+  'after-reset',
+  'cancel' // 添加关闭事件
 ])
 
 const formRef = ref<InstanceType<typeof NForm> | null>(null)
@@ -193,23 +199,23 @@ watch(() => props.modelValue, (newVal) => {
   // 仅当 newVal 发生实际变化时才更新 internalFormData，避免不必要的触发和潜在的循环
   // 使用 JSON.stringify 进行简单深比较，对于复杂对象可能需要更健壮的比较方式
   if (JSON.stringify(internalFormData.value) !== JSON.stringify(newVal)) {
-    internalFormData.value = { ...newVal }
+    internalFormData.value = {...newVal}
   }
-}, { deep: true, immediate: true }) // immediate: true 确保在组件初始化时同步一次
+}, {deep: true, immediate: true}) // immediate: true 确保在组件初始化时同步一次
 
 // 监听内部状态的变化，并向父组件发出更新事件
 watch(internalFormData, (newVal, oldVal) => {
   emit('update:modelValue', newVal)
-  
+
   // 找出变化的字段
-  const changedFields = Object.keys(newVal).filter(key => 
-    JSON.stringify(newVal[key]) !== JSON.stringify(oldVal?.[key])
+  const changedFields = Object.keys(newVal).filter(key =>
+      JSON.stringify(newVal[key]) !== JSON.stringify(oldVal?.[key])
   )
-  
+
   changedFields.forEach(field => {
     emit('field-change', field, newVal[field], newVal)
   })
-}, { deep: true })
+}, {deep: true})
 
 const loading = ref(false)
 const message = useMessage()
@@ -241,7 +247,7 @@ const defaultExpandedNames = computed(() => {
   // defaultExpandedNames 应该只应用于真正的可收缩分组
   return processedSchema.value.layout
       .filter(item => isFormGroup(item) && item.title && item.collapsible !== false && item.defaultExpanded)
-      .map((item, index) => index) as number[]
+      .map((item:any, index) => index) as number[]
 })
 
 // 类型守卫函数，判断是否为 FormGroup
@@ -345,7 +351,7 @@ const handleSave = async () => {
     if (result.success) {
       message.success(result.message)
       emit('success', result.data)
-      emit('after-submit', { isEdit: isEdit.value, formData: internalFormData.value })
+      emit('after-submit', {isEdit: isEdit.value, formData: internalFormData.value})
       if (!isEdit.value) {
         internalFormData.value = result.data // 创建成功后更新内部数据
       }
@@ -363,7 +369,7 @@ const handleSave = async () => {
 // 重置表单
 const handleReset = () => {
   emit('before-reset', internalFormData.value)
-  
+
   if (isEdit.value && props.getApi && internalFormData.value?.id) {
     // 编辑模式下，重新获取数据
     loading.value = true
@@ -372,7 +378,7 @@ const handleReset = () => {
           if (result.success) {
             internalFormData.value = result.data || {} // 重置为获取到的数据
             message.success('重置成功')
-            emit('after-reset', { isEdit: true, formData: internalFormData.value })
+            emit('after-reset', {isEdit: true, formData: internalFormData.value})
           } else {
             message.error(result.message)
           }
@@ -391,8 +397,12 @@ const handleReset = () => {
     }
     formRef.value?.restoreValidation()
     message.success('重置成功')
-    emit('after-reset', { isEdit: false, formData: internalFormData.value })
+    emit('after-reset', {isEdit: false, formData: internalFormData.value})
   }
+}
+
+const handleCancel = () => {
+  emit('cancel')
 }
 
 // 初始化数据
@@ -403,7 +413,7 @@ onMounted(async () => {
       const result = await props.getApi(props.modelValue.id)
       if (result.success) {
         internalFormData.value = result.data || {}
-        emit('init', { isEdit: true, formData: internalFormData.value })
+        emit('init', {isEdit: true, formData: internalFormData.value})
       } else {
         message.error(result.message)
       }
@@ -419,14 +429,16 @@ onMounted(async () => {
       ...defaultValues,
       ...props.modelValue // 确保初始的 prop.modelValue 也能被合并
     }
-    emit('init', { isEdit: false, formData: internalFormData.value })
+    emit('init', {isEdit: false, formData: internalFormData.value})
   }
 })
+
 
 // 暴露方法给父组件
 defineExpose({
   validate: () => formRef.value?.validate(),
-  restoreValidation: () => formRef.value?.restoreValidation()
+  restoreValidation: () => formRef.value?.restoreValidation(),
+  handleCancel
 })
 </script>
 

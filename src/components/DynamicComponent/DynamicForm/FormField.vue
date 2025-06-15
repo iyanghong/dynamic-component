@@ -1,5 +1,5 @@
 <template>
-  <div class="form-field">
+  <div v-if="!field.hidden" class="form-field">
     <component
       :is="getFieldComponent(field.type)"
       v-bind="{

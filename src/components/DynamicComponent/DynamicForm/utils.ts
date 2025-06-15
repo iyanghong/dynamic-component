@@ -1,4 +1,4 @@
-import type {FormFieldSchema, FormField, FormGroup, FormLayoutItem} from './types'
+import type {FormField, FormGroup, FormLayoutItem} from './types'
 
 // 类型守卫函数，判断是否为 FormGroup
 function isFormGroup(item: FormLayoutItem): item is FormGroup {

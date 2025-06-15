@@ -1,16 +1,17 @@
-import {ServiceResult} from "@/types/response.ts";
-
+import {ServiceResult} from "@/types/response-utils.ts";
+import type {GetApiFun, CreateApiFun, UpdateApiFun, GetAllApiFun, DeleteApiFun, GetPageApiFun} from '@/types/response'
 
 export interface FormProps<T = Record<string, any>> {
     // API 配置
-    getApi?: () => Promise<ServiceResult<T>>
-    createApi?: (data: T) => Promise<ServiceResult<T>>
-    updateApi?: (data: T) => Promise<ServiceResult<T>>
-    deleteApi?: (id: string | number) => Promise<ServiceResult<T>>
+    getApi?: GetApiFun
+    createApi?: CreateApiFun
+    updateApi?: UpdateApiFun
+    deleteApi?: DeleteApiFun
     // 固定数据（当不需要调用 API 时使用）
     fixedData?: T
     // 表单配置
     filedSchema: FormFieldSchema<T>
+    actionAlign?: "start" | "end" | "center" | "space-around" | "space-between" | "space-evenly"
     width?: string | number // 表单宽度，可以是数字(px)或字符串(如'100%')
     // 验证配置
     validateBeforeSubmit?: boolean // 是否在提交前验证
@@ -42,6 +43,8 @@ export interface FormField<T = Record<string, any>> {
     type: 'input' | 'password' | 'select' | 'checkbox' | 'radio' | 'date' | 'switch' | 'number'
     label: string
     field: string
+    showInSimple?: boolean // 是否在简单搜索中显示
+    hidden?: boolean; // 是否默认隐藏，需要点击高级搜索才显示
     defaultValue?: (formData: T) => any | any
     rules?: Array<{
         required?: boolean

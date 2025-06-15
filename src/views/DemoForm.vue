@@ -33,7 +33,7 @@
 </template>
 <script setup lang="ts">
 import {ref} from 'vue'
-import {ServiceResult} from '@/types/response'
+import {ServiceResult} from '@/types/response-utils.ts'
 import {NCard, useMessage} from "naive-ui";
 import DynamicForm from "@/components/DynamicComponent/DynamicForm/DynamicForm.vue";
 import type {FormFieldSchema} from "@/components/DynamicComponent/DynamicForm/types.ts";
