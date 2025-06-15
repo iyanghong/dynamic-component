@@ -115,12 +115,14 @@
 </template>
 
 <script setup lang="ts">
-import {ref, watch, computed, onMounted, type PropType} from 'vue'
+import {ref, watch, computed, onMounted, unref, type PropType, nextTick} from 'vue'
 import {NForm, NFormItem, NGrid, NGi, NCollapse, NCollapseItem, NCard, NSpace, NButton, useMessage} from 'naive-ui'
 import FormField from './FormField.vue'
 import type {FormField as FormFieldType, FormGroup, FormLayoutItem} from './types'
 import {ServiceResult} from '@/types/response-utils.ts'
 import {getDefaultValues} from './utils'
+import type {CreateApiFn, GetApiFn, UpdateApiFn} from "@/types/response";
+import {isAsyncFunction, isFunction} from "@/components/DynamicComponent/utils";
 
 const props = defineProps({
   filedSchema: {
@@ -145,16 +147,13 @@ const props = defineProps({
   },
   // API 配置
   getApi: {
-    type: Function as PropType<(id: string) => Promise<ServiceResult<Record<string, any>>>>,
-    default: undefined
+    type: Function as PropType<GetApiFn>,
   },
   createApi: {
-    type: Function as PropType<(data: Record<string, any>) => Promise<ServiceResult<Record<string, any>>>>,
-    default: undefined
+    type: Function as PropType<CreateApiFn>,
   },
   updateApi: {
-    type: Function as PropType<(data: Record<string, any>) => Promise<ServiceResult<Record<string, any>>>>,
-    default: undefined
+    type: Function as PropType<UpdateApiFn>,
   },
   // 是否显示操作按钮
   showActions: {
@@ -162,7 +161,7 @@ const props = defineProps({
     default: null
   },
   actionAlign: {
-    type: String as PropType< "start" | "end" | "center" | "space-around" | "space-between" | "space-evenly">,
+    type: String as PropType<"start" | "end" | "center" | "space-around" | "space-between" | "space-evenly">,
     default: () => 'start'
   },
   // 自定义按钮文字
@@ -247,7 +246,7 @@ const defaultExpandedNames = computed(() => {
   // defaultExpandedNames 应该只应用于真正的可收缩分组
   return processedSchema.value.layout
       .filter(item => isFormGroup(item) && item.title && item.collapsible !== false && item.defaultExpanded)
-      .map((item:any, index) => index) as number[]
+      .map((item, index) => index) as number[]
 })
 
 // 类型守卫函数，判断是否为 FormGroup
@@ -335,7 +334,7 @@ const handleSave = async () => {
       return
     }
 
-    let result: ServiceResult<any>
+    let result: ServiceResult<Record<string, any>>
     if (isEdit.value) {
       if (!props.updateApi) {
         throw new Error('未配置更新接口')
@@ -353,7 +352,7 @@ const handleSave = async () => {
       emit('success', result.data)
       emit('after-submit', {isEdit: isEdit.value, formData: internalFormData.value})
       if (!isEdit.value) {
-        internalFormData.value = result.data // 创建成功后更新内部数据
+        internalFormData.value = result.data || {} // 创建成功后更新内部数据
       }
     } else {
       message.error(result.message)
@@ -373,33 +372,44 @@ const handleReset = () => {
   if (isEdit.value && props.getApi && internalFormData.value?.id) {
     // 编辑模式下，重新获取数据
     loading.value = true
-    props.getApi(internalFormData.value.id)
-        .then(result => {
-          if (result.success) {
-            internalFormData.value = result.data || {} // 重置为获取到的数据
-            message.success('重置成功')
-            emit('after-reset', {isEdit: true, formData: internalFormData.value})
-          } else {
-            message.error(result.message)
-          }
-        })
-        .catch(error => {
-          message.error(error instanceof Error ? error.message : '重置失败')
-        })
-        .finally(() => {
-          loading.value = false
-        })
+    nextTick(async () => {
+      if (props.getApi && (isFunction(props.getApi) || isAsyncFunction(props.getApi))) {
+        const result = await props.getApi(internalFormData.value.id);
+        if (result.success) {
+          internalFormData.value = result.data || {} // 重置为获取到的数据
+          message.success('重置成功')
+          emit('after-reset', {isEdit: true, formData: internalFormData.value})
+        } else {
+          message.error(result.message)
+        }
+        loading.value = false
+      } else {
+        // 创建模式下，清空表单并应用默认值
+        internalFormData.value = {
+          ...getDefaultValues(props.filedSchema),
+          ...props.modelValue // 确保初始的 prop.modelValue 也能被合并
+        }
+        formRef.value?.restoreValidation()
+        message.success('重置成功')
+        emit('after-reset', {isEdit: false, formData: internalFormData.value})
+      }
+    })
+
   } else {
-    // 创建模式下，清空表单并应用默认值
-    internalFormData.value = {
-      ...getDefaultValues(props.filedSchema),
-      ...props.modelValue // 确保初始的 prop.modelValue 也能被合并
-    }
-    formRef.value?.restoreValidation()
-    message.success('重置成功')
-    emit('after-reset', {isEdit: false, formData: internalFormData.value})
+
   }
 }
+
+function setFormData(values: Record<string, any>) {
+  Object.keys(values).forEach(key => {
+    internalFormData.value[key] = unref(values)[key] || null;
+  });
+}
+
+function getFormData() {
+  return JSON.parse(JSON.stringify(internalFormData.value))
+}
+
 
 const handleCancel = () => {
   emit('cancel')
@@ -438,7 +448,9 @@ onMounted(async () => {
 defineExpose({
   validate: () => formRef.value?.validate(),
   restoreValidation: () => formRef.value?.restoreValidation(),
-  handleCancel
+  handleCancel,
+  setFormData,
+  getFormData
 })
 </script>
 

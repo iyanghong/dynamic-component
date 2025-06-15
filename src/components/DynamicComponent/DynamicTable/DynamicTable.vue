@@ -3,7 +3,6 @@
     <!-- 表格操作区域 -->
     <div class="table-actions" style="margin-bottom: 16px;">
 
-
       <!-- 搜索表单区域 -->
       <div v-if="config.searchFields && config.searchFields.length > 0" class="search-area">
         <DynamicForm ref="searchFormRef" :filedSchema="visibleSearchFields" v-model:model="searchForm"
@@ -17,7 +16,6 @@
         </n-space>
       </div>
 
-
       <n-space style="margin-top: 15px">
         <!-- 新增按钮 -->
         <n-button v-if="config.createApi" type="primary" @click="openModal('create')" style="margin-right: 8px;">
@@ -29,27 +27,21 @@
     <n-data-table :columns="tableColumns" :data="tableData" :pagination="pagination" :loading="loading"
                   :style="tableStyle"/>
 
-    <CleverPopup v-model:visible="modalVisible" :title="modalTitle">
-      <DynamicForm
-          v-if="modalVisible" v-bind="formProp" ref="formRef" @success="handleFormSuccess"
-          @cancel="handleCancel"></DynamicForm>
-    </CleverPopup>
-
+    <FormPopup :form-prop="formProp" ref="formPopupRef" @on-sucess="handleFormSuccess"></FormPopup>
   </div>
 </template>
 
 <script lang="tsx" setup>
-import {ref, computed, watch, h} from 'vue'
-import {NDataTable, NButton, useMessage} from 'naive-ui'
-import type {DataTableProps} from 'naive-ui'
-import type {TableConfig, TableProps, TableButton} from './types'
-import {initTableColumns} from './utils'
+import { ref, computed, watch, h } from 'vue'
+import { NDataTable, NButton, useMessage } from 'naive-ui'
+import type { DataTableProps } from 'naive-ui'
+import type { TableConfig, TableProps, TableAction, TableColumn } from './types'
+import { initTableColumns } from './utils'
 import DynamicForm from '@/components/DynamicComponent/DynamicForm/DynamicForm.vue'
-import type {ServiceResult} from '@/types/response-utils.ts'
-import type {FormProps} from "@/components/DynamicComponent/DynamicForm/types.ts";
-import CleverPopup from '../clever-popup/index.vue'
-import type {CleverPopupProps} from "@/components/DynamicComponent/clever-popup/types.ts";
+import type { FormProps, FormField } from "@/components/DynamicComponent/DynamicForm/types.ts";
 
+import type { CleverPopupProps } from "@/components/DynamicComponent/clever-popup/types.ts";
+import FormPopup from '../DynamicForm/FormPopup.vue'
 
 const props = defineProps<{
   config: TableProps
@@ -62,11 +54,9 @@ const props = defineProps<{
   formProps?: CleverPopupProps
 }>()
 
-// 表单模态框相关
-const modalVisible = ref(false)
+
 const currentRow = ref<any>(null)
-const formRef = ref<InstanceType<typeof DynamicForm> | null>(null)
-const modalMode = ref<'create' | 'edit' | 'view'>('create')
+const formPopupRef = ref<InstanceType<typeof FormPopup> | null>(null)
 
 const formProp: FormProps = {
   filedSchema: props.config.formSchema || [],
@@ -75,46 +65,26 @@ const formProp: FormProps = {
   updateApi: props.config.updateApi
 }
 
-const modalTitle = computed(() => {
-  switch (modalMode.value) {
-    case 'create':
-      return '新增'
-    case 'edit':
-      return '编辑'
-    case 'view':
-      return '详情'
-    default:
-      return '表单'
-  }
-})
 
 
 // 打开模态框
-const openModal = (mode: 'create' | 'edit' | 'view', row?: any) => {
-  modalMode.value = mode
+const openModal = (row?: any) => {
   currentRow.value = row ? {...row} : null
-  modalVisible.value = true
+  formPopupRef.value?.open(row)
 }
 
 // 处理表单提交成功
-const handleFormSuccess = (data: any) => {
-  message.success(modalMode.value === 'create' ? '新增成功' : '编辑成功')
-  modalVisible.value = false
+const handleFormSuccess = () => {
   fetchData() // 重新加载数据
 }
 
-const handleCancel = () => {
-  modalVisible.value = false
-}
-
-
 // 搜索相关变量
 const searchFormRef = ref(null)
-const searchForm = ref({})
+const searchForm = ref<Record<string, any>>({})
 const showAdvanced = ref(false)
 
 // 计算可见的搜索字段
-const visibleSearchFields = computed(() => {
+const visibleSearchFields = computed<FormField[]>(() => {
   if (!props.config.searchFields) return []
 
   if (showAdvanced.value) {
@@ -176,7 +146,8 @@ const fetchData = async () => {
         }
         const result = await props.config.getPageApi(param)
         if (result.success && result.data) {
-          tableDataRef.value = result.data.records || []
+          // 双重断言确保类型兼容
+          tableDataRef.value = (result.data.records as unknown as any[]) || []
           // 这里可以设置分页信息，简化处理
         }
       }
@@ -185,12 +156,17 @@ const fetchData = async () => {
       if (props.config.getAllApi) {
         const result = await props.config.getAllApi(searchParams)
         if (result.success && result.data) {
-          tableDataRef.value = result.data
+          // 双重断言确保类型兼容
+          tableDataRef.value = (result.data as unknown as any[]) || []
         }
       }
     }
   } catch (error) {
-    message.error('数据加载失败')
+    if (props.config.onApiError) {
+      props.config.onApiError(error, 'get')
+    } else {
+      message.error('数据加载失败')
+    }
     console.error(error)
   } finally {
     loadingRef.value = false
@@ -218,59 +194,66 @@ const handleDelete = async (row: any) => {
   }
 }
 
+// 生成操作列按钮
+const generateActionButtons = (row: any, index: number) => {
+  if (!props.config.actions) return []
+
+  const actions: TableAction[] = []
+
+  // 处理预定义操作（字符串数组）
+  if (Array.isArray(props.config.actions) && props.config.actions.every(item => typeof item === 'string')) {
+    (props.config.actions as string[]).forEach(action => {
+      if (action === 'view') {
+        actions.push({
+          text: '详情',
+          type: 'info',
+          onClick: () => openModal(row)
+        })
+      } else if (action === 'edit' && props.config?.updateApi) {
+        actions.push({
+          text: '编辑',
+          type: 'primary',
+          onClick: () => openModal(row)
+        })
+      } else if (action === 'delete' && props.config?.deleteApi) {
+        actions.push({
+          text: '删除',
+          type: 'error',
+          onClick: () => handleDelete(row)
+        })
+      }
+    })
+  } 
+  // 处理自定义操作（TableAction数组）
+  else if (Array.isArray(props.config.actions) && props.config.actions.every(item => typeof item === 'object')) {
+    (props.config.actions as TableAction[]).forEach(action => {
+      if (typeof action.ifShow === 'function' ? action.ifShow(row, index) : action.ifShow ?? true) {
+        actions.push(action)
+      }
+    })
+  }
+
+  return actions
+}
+
 // 初始化列
 const initColumns = () => {
-  return props.columns.map(col => {
+  return props.columns.map((col: TableColumn) => {
     // 如果是操作列且没有render函数，添加默认操作按钮
     if (col.key === 'actions' && !col.render) {
       return {
         ...col,
-        render: (row: any) => {
-          // 收集所有按钮
-          const buttons: TableButton[] = []
-
-          // 添加自定义按钮（来自列配置）
-          if (col.buttons) {
-            buttons.push(...col.buttons)
-          }
-
-          // 添加系统操作按钮（如果没有在自定义按钮中定义）
-          const hasDetail = buttons.some(btn => btn.text === '详情')
-          const hasEdit = buttons.some(btn => btn.text === '编辑')
-          const hasDelete = buttons.some(btn => btn.text === '删除')
-
-          if (!hasDetail) {
-            buttons.push({
-              text: '详情',
-              type: 'info',
-              onClick: () => openModal('view', row)
-            })
-          }
-
-          if (props.config?.updateApi && !hasEdit) {
-            buttons.push({
-              text: '编辑',
-              type: 'primary',
-              onClick: () => openModal('edit', row)
-            })
-          }
-
-          if (props.config?.deleteApi && !hasDelete) {
-            buttons.push({
-              text: '删除',
-              type: 'error',
-              onClick: () => handleDelete(row)
-            })
-          }
-
-          return buttons.map((btn: TableButton, index: number) =>
-              h(NButton, {
-                key: index,
-                type: btn.type || 'default',
-                size: 'small',
-                onClick: () => btn.onClick(row),
-                style: {marginRight: '8px'}
-              }, {default: () => btn.text})
+        render: (row: any, index: number) => {
+          const actions = generateActionButtons(row, index)
+          
+          return actions.map((action, idx) =>
+            h(NButton, {
+              key: idx,
+              type: action.type || 'default',
+              size: 'small',
+              onClick: () => action.onClick(row, index),
+              style: { marginRight: '8px' }
+            }, { default: () => action.text })
           )
         }
       }

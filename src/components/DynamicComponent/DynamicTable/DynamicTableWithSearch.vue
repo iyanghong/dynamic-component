@@ -28,11 +28,11 @@ import { ref, watch } from 'vue'
 import { NCard, NButton } from 'naive-ui'
 import DynamicForm from '@/components/DynamicComponent/DynamicForm/DynamicForm.vue'
 import DynamicTable from './DynamicTable.vue'
-import type { TableConfig, TableProps } from './types'
+import type { TableConfig, CleverTableProps } from './types'
 import type { FormField } from '@/components/DynamicComponent/DynamicForm/types'
 
 const props = defineProps<{
-  tableConfig: TableProps
+  tableConfig: CleverTableProps
   columns: TableConfig
   searchFields: FormField[] // 搜索字段配置
 }>()

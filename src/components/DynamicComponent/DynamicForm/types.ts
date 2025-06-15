@@ -1,12 +1,12 @@
 import {ServiceResult} from "@/types/response-utils.ts";
-import type {GetApiFun, CreateApiFun, UpdateApiFun, GetAllApiFun, DeleteApiFun, GetPageApiFun} from '@/types/response'
+import type {GetApiFn, CreateApiFn, UpdateApiFn, DeleteApiFn} from '@/types/response'
 
-export interface FormProps<T = Record<string, any>> {
+export interface FormProps<T extends Record<string, any> = any> {
     // API 配置
-    getApi?: GetApiFun
-    createApi?: CreateApiFun
-    updateApi?: UpdateApiFun
-    deleteApi?: DeleteApiFun
+    getApi?: GetApiFn<T>
+    createApi?: CreateApiFn<T>
+    updateApi?: UpdateApiFn<T>
+    deleteApi?: DeleteApiFn<T>
     // 固定数据（当不需要调用 API 时使用）
     fixedData?: T
     // 表单配置
@@ -35,11 +35,21 @@ export interface FormProps<T = Record<string, any>> {
     onFormSubmitError?: (error: any) => void // 表单提交失败回调
 }
 
-export type FormSchema<T = Record<string, any>> = FormLayoutItem<T> [];
-export type FormFieldSchema<T = Record<string, any>> = FormSchema<T>;
-export type FormLayoutItem<T = Record<string, any>> = FormField<T> | FormGroup<T>;
+export interface FormPopupProps {
+    title?: string;
+    width?: number | string;
+    mode?: 'modal' | 'drawer';
+    placement?: 'top' | 'right' | 'bottom' | 'left';
+    formProp: FormProps
 
-export interface FormField<T = Record<string, any>> {
+    [key: string]: any;
+}
+
+export type FormSchema<T extends Record<string, any> = any> = FormLayoutItem<T> [];
+export type FormFieldSchema<T extends Record<string, any> = any> = FormSchema<T>;
+export type FormLayoutItem<T extends Record<string, any> = any> = FormField<T> | FormGroup<T>;
+
+export interface FormField<T extends Record<string, any> = any> {
     type: 'input' | 'password' | 'select' | 'checkbox' | 'radio' | 'date' | 'switch' | 'number'
     label: string
     field: string
@@ -68,7 +78,7 @@ export interface FormField<T = Record<string, any>> {
     getValueFormatter?: (value: any, formData: T) => any
 }
 
-export interface FormGroup<T = Record<string, any>> {
+export interface FormGroup<T extends Record<string, any> = any> {
     title?: string
     columns?: number
     fields: FormLayoutItem<T>[]
